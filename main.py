@@ -23,7 +23,7 @@ WALK_ANIMATE_SENSITIVITY = 5
 JUMP_ANIMATE_SENSITIVITY = 1
 SPAWN_DISTANCES = [80,130]
 MIN_HEIGHT_REQUIRED = 120
-MIN_WIDTH_REQUIRED = 150
+MIN_WIDTH_REQUIRED = 160
 
 
 
@@ -140,7 +140,7 @@ def draw_menu(stdscr):
 
         if not GAME_OVER:
             if height < MIN_HEIGHT_REQUIRED and width < MIN_WIDTH_REQUIRED:
-                if not cleared: stdscr.clear()
+                stdscr.clear()
                 title = "Please maximize the terminal"[:width - 1]
                 sub_title = str(MIN_HEIGHT_REQUIRED)+"x"+str(MIN_WIDTH_REQUIRED)+" is the minimum height needed to run the game"[:width - 1]
                 start_x_title = int((width // 2) - (len(title) // 2) - len(title) % 2)
@@ -156,12 +156,10 @@ def draw_menu(stdscr):
                 # Turning off attributes for title
                 stdscr.attroff(curses.color_pair(2))
                 stdscr.attroff(curses.A_BOLD)
-                if not cleared:
-                    stdscr.refresh()
-                    cleared = True
+                stdscr.refresh()
+                time.sleep(0.5)
                 continue
             stdscr.clear()
-            cleared = False
             if k == curses.KEY_UP:
                 if idle:
                     jump = going_up = True
