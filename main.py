@@ -13,30 +13,19 @@ k = 0
 global_stdscr = None
 
 JUMP_HEIGHT = 14
-IDLE_FRAMES = [(28,25,7),(29,24,2),(29,27,6),(30,24,9),(31,24,3),(32,24,7),
-        (33,23,3),(34,22,5),(35,20,8),(36,19,13),(37,18,10),(37,31,1),(38,18,9),
-        (39,12,15),(38,12,3),(37,12,2),(36,12,1),
-        (40,13,13),(41,14,11),
-        (42,16,3),(42,21,3),(43,17,2),(43,22,2),
-        (44,18,2),(44,23,2)]
-WALK_ONE_FRAMES = [(28,25,7),(29,24,2),(29,27,6),(30,24,9),(31,24,3),(32,24,7),
-        (33,23,3),(34,22,5),(35,20,8),(36,19,13),(37,18,10),(37,31,1),(38,18,9),
-        (39,12,15),(38,12,3),(37,12,2),(36,12,1),
-        (40,13,13),(41,14,11),
-        (42,16,3),(42,21,3),(43,17,2),(43,22,3),
-        (44,18,2)]
-WALK_TWO_FRAMES = [(28,25,7),(29,24,2),(29,27,6),(30,24,9),(31,24,3),(32,24,7),
-        (33,23,3),(34,22,5),(35,20,8),(36,19,13),(37,18,10),(37,31,1),(38,18,9),
-        (39,12,15),(38,12,3),(37,12,2),(36,12,1),
-        (40,13,13),(41,14,11),
-        (42,16,3),(42,21,3),(43,17,3),(43,22,2),
-        (44, 23, 2)]
+
+IDLE_FRAMES = WALK_ONE_FRAMES = WALK_TWO_FRAMES = None
+
 
 GAME_OVER = False
 JUMP_SENSITIVITY = 0.002
 WALK_ANIMATE_SENSITIVITY = 5
 JUMP_ANIMATE_SENSITIVITY = 1
 SPAWN_DISTANCES = [80,130]
+MIN_HEIGHT_REQUIRED = 120
+MIN_WIDTH_REQUIRED = 150
+
+
 
 idle = True
 SLEEP_TIME = Time.IDEAL.value
@@ -99,7 +88,7 @@ def create_obstacles(obstacle_indexes,stdscr,height):
 
 
 def draw_menu(stdscr):
-    global k,global_stdscr,idle,SLEEP_TIME,GAME_OVER
+    global k,global_stdscr,idle,SLEEP_TIME,GAME_OVER, IDLE_FRAMES,WALK_ONE_FRAMES,WALK_TWO_FRAMES
     global_stdscr = stdscr
 
     # Clear and refresh the screen for a blank canvas
@@ -107,6 +96,26 @@ def draw_menu(stdscr):
     stdscr.refresh()
 
     height, width = global_stdscr.getmaxyx()
+
+    IDLE_FRAMES = [(height-27, 25, 7), (height-26, 24, 2), (height-26, 27, 6), (height-25, 24, 9), (height-24, 24, 3), (height-23, 24, 7),
+                   (height-22, 23, 3), (height-21, 22, 5), (height-20, 20, 8), (height-19, 19, 13), (height-18, 18, 10), (height-18, 31, 1), (height-17, 18, 9),
+                   (height-16, 12, 15), (height-17, 12, 3), (height-18, 12, 2), (height-19, 12, 1),
+                   (height-15, 13, 13), (height-14, 14, 11),
+                   (height-13, 16, 3), (height-13, 21, 3), (height-12, 17, 2), (height-12, 22, 2),
+                   (height-11, 18, 2), (height-11, 23, 2)]
+    WALK_ONE_FRAMES = [(height-27, 25, 7), (height-26, 24, 2), (height-26, 27, 6), (height-25, 24, 9), (height-24, 24, 3), (height-23, 24, 7),
+                       (height-22, 23, 3), (height-21, 22, 5), (height-20, 20, 8), (height-19, 19, 13), (height-18, 18, 10), (height-18, 31, 1), (height-17, 18, 9),
+                       (height-16, 12, 15), (height-17, 12, 3), (height-18, 12, 2), (height-19, 12, 1),
+                       (height-15, 13, 13), (height-14, 14, 11),
+                       (height - 13, 16, 3), (height - 13, 21, 3), (height - 12, 17, 2), (height - 12, 22, 3),
+                       (height - 11, 18, 2)]
+    WALK_TWO_FRAMES = [(height-27, 25, 7), (height-26, 24, 2), (height-26, 27, 6), (height-25, 24, 9), (height-24, 24, 3), (height-23, 24, 7),
+                       (height-22, 23, 3), (height-21, 22, 5), (height-20, 20, 8), (height-19, 19, 13), (height-18, 18, 10), (height-18, 31, 1), (height-17, 18, 9),
+                       (height-16, 12, 15), (height-17, 12, 3), (height-18, 12, 2), (height-19, 12, 1),
+                       (height-15, 13, 13), (height-14, 14, 11),
+                       (height - 13, 16, 3), (height - 13, 21, 3), (height - 12, 17, 3), (height - 12, 22, 2),
+                       (height - 11, 23, 2)]
+
 
     obstacle_indexes=[{"type": random.randint(1,3),"index": width - 5}]
     obstacle_iterator = 1
@@ -130,7 +139,29 @@ def draw_menu(stdscr):
         height, width = stdscr.getmaxyx()
 
         if not GAME_OVER:
+            if height < MIN_HEIGHT_REQUIRED and width < MIN_WIDTH_REQUIRED:
+                if not cleared: stdscr.clear()
+                title = "Please maximize the terminal"[:width - 1]
+                sub_title = str(MIN_HEIGHT_REQUIRED)+"x"+str(MIN_WIDTH_REQUIRED)+" is the minimum height needed to run the game"[:width - 1]
+                start_x_title = int((width // 2) - (len(title) // 2) - len(title) % 2)
+                start_x_sub_title = int((width // 2) - (len(sub_title) // 2) - len(sub_title) % 2)
+                # Turning on attributes for title
+                stdscr.attron(curses.color_pair(2))
+                stdscr.attron(curses.A_BOLD)
+
+                # Rendering title
+                stdscr.addstr(height // 2, start_x_title, title)
+                stdscr.addstr(height // 2 + 2, start_x_sub_title, sub_title)
+
+                # Turning off attributes for title
+                stdscr.attroff(curses.color_pair(2))
+                stdscr.attroff(curses.A_BOLD)
+                if not cleared:
+                    stdscr.refresh()
+                    cleared = True
+                continue
             stdscr.clear()
+            cleared = False
             if k == curses.KEY_UP:
                 if idle:
                     jump = going_up = True
