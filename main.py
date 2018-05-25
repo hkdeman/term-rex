@@ -3,6 +3,7 @@ import curses
 import time
 import threading
 from enum import Enum
+import random
 
 class Time(Enum):
     IDEAL = 0.01
@@ -35,14 +36,14 @@ GAME_OVER = False
 JUMP_SENSITIVITY = 0.002
 WALK_ANIMATE_SENSITIVITY = 5
 JUMP_ANIMATE_SENSITIVITY = 1
-
+SPAWN_DISTANCES = [80,130]
 
 idle = True
 SLEEP_TIME = Time.IDEAL.value
 
 def get_input():
-    global k,global_stdscr,idle,GAME_OVER
-    while k!=ord('q') and not GAME_OVER:
+    global k,global_stdscr,idle
+    while k!=ord('q'):
         k = global_stdscr.getch()
         if not idle and k==curses.KEY_UP:
             k=0
@@ -51,44 +52,65 @@ def setup_foreground(stdscr,height,width):
     stdscr.hline(height-11, 0, "_", width)
 
 
-def create_obstacles(obstacle_index,stdscr,height):
-    #stem
-    stdscr.chgat(height - 11, obstacle_index, 1, curses.A_REVERSE)
-    stdscr.chgat(height - 12, obstacle_index, 1, curses.A_REVERSE)
-    stdscr.chgat(height - 13, obstacle_index, 1, curses.A_REVERSE)
-    stdscr.chgat(height - 14, obstacle_index, 1, curses.A_REVERSE)
-    stdscr.chgat(height - 15, obstacle_index, 1, curses.A_REVERSE)
-
-    #right branch
-    stdscr.chgat(height - 13, obstacle_index+1, 1, curses.A_REVERSE)
-    stdscr.chgat(height - 13, obstacle_index+2, 1, curses.A_REVERSE)
-    stdscr.chgat(height - 14, obstacle_index+2, 1, curses.A_REVERSE)
-
-    #left branch
-    stdscr.chgat(height - 12, obstacle_index-1, 1, curses.A_REVERSE)
-    stdscr.chgat(height - 12, obstacle_index-2, 1, curses.A_REVERSE)
-    stdscr.chgat(height - 13, obstacle_index-2, 1, curses.A_REVERSE)
-
-
-def check_collision(obstacle_index,jump_height):
+def check_collision(obstacle_indexes,jump_height):
     global GAME_OVER
-    for frame in IDLE_FRAMES[13:16]:
-        if frame[1]+frame[2] == obstacle_index and jump_height < 3:
-            GAME_OVER= True
+    for obstacle_index in obstacle_indexes:
+        for frame in IDLE_FRAMES[13:17]:
+            if frame[1]+frame[2]==obstacle_index["index"] and jump_height < 5:
+                GAME_OVER= True
+
+
+def create_obstacle_one(obstacle_index,stdscr,height):
+    for i in range(11,16):
+        stdscr.chgat(height-i,obstacle_index,1,curses.A_REVERSE)
+
+    # right branch
+    stdscr.chgat(height - 13, obstacle_index + 1, 1, curses.A_REVERSE)
+    stdscr.chgat(height - 13, obstacle_index + 2, 1, curses.A_REVERSE)
+    stdscr.chgat(height - 14, obstacle_index + 2, 1, curses.A_REVERSE)
+
+    # left branch
+    stdscr.chgat(height - 12, obstacle_index - 1, 1, curses.A_REVERSE)
+    stdscr.chgat(height - 12, obstacle_index - 2, 1, curses.A_REVERSE)
+    stdscr.chgat(height - 13, obstacle_index - 2, 1, curses.A_REVERSE)
+
+
+def create_obstacle_two(obstacle_index,stdscr,height):
+    for j in [-2, 2]:
+        for i in range(11,16):
+            stdscr.chgat(height-i,obstacle_index+j,1,curses.A_REVERSE)
+
+    stdscr.chgat(height - 15, obstacle_index -1, 3, curses.A_REVERSE)
+
+def create_obstacle_three(obstacle_index,stdscr,height):
+    for i in range(11,16):
+        stdscr.chgat(height-i,obstacle_index-2,4,curses.A_REVERSE)
+
+
+def create_obstacles(obstacle_indexes,stdscr,height):
+    #stem
+    for obstacle_index in obstacle_indexes:
+        if obstacle_index["type"]==1:
+            create_obstacle_one(obstacle_index["index"],stdscr,height)
+        elif obstacle_index["type"]==2:
+            create_obstacle_two(obstacle_index["index"],stdscr,height)
+        elif obstacle_index["type"]==3:
+            create_obstacle_three(obstacle_index["index"],stdscr,height)
 
 
 def draw_menu(stdscr):
     global k,global_stdscr,idle,SLEEP_TIME,GAME_OVER
     global_stdscr = stdscr
-    cursor_x = 0
-    cursor_y = 0
 
     # Clear and refresh the screen for a blank canvas
     stdscr.clear()
     stdscr.refresh()
 
     height, width = global_stdscr.getmaxyx()
-    obstacle_index = width - 5
+
+    obstacle_indexes=[{"type": random.randint(1,3),"index": width - 5}]
+    obstacle_iterator = 1
+
     index = 0
     jump = going_down = going_up = on_ground = False
 
@@ -99,6 +121,8 @@ def draw_menu(stdscr):
     curses.start_color()
     curses.init_pair(2, curses.COLOR_RED, curses.COLOR_BLACK)
     cleared = False
+
+    score = 0
 
     # Loop where k is the last character pressed
     while (k != ord('q')):
@@ -114,12 +138,14 @@ def draw_menu(stdscr):
                     k=0
 
             setup_foreground(stdscr,height,width)
-            create_obstacles(obstacle_index, stdscr, height)
+            create_obstacles(obstacle_indexes, stdscr, height)
 
-            if obstacle_index >= 5:
-                obstacle_index -= 1
-            else:
-                obstacle_index = width-5
+            for i,obstacle_index in enumerate(obstacle_indexes):
+                if obstacle_index["index"] >= 5:
+                    obstacle_indexes[i]["index"] -= 1
+                else:
+                    del obstacle_indexes[i]
+                    score+=1
 
             if idle:
                 if type_idle == 1:
@@ -168,8 +194,18 @@ def draw_menu(stdscr):
                         jump = False
                         idle = True
 
+            where_to_spawn_randomizor = random.choice(SPAWN_DISTANCES)
+
+            if obstacle_iterator%where_to_spawn_randomizor==0:
+                obstacle_indexes.append({"type":random.randint(1,3),"index":width-5})
+
+            if obstacle_iterator>max(SPAWN_DISTANCES)+1:
+                obstacle_iterator=1
+
+            obstacle_iterator+=1
+
             stdscr.move(0,0)
-            check_collision(obstacle_index,index)
+            check_collision(obstacle_indexes,index)
 
             stdscr.refresh()
             # Wait for next input
@@ -178,13 +214,16 @@ def draw_menu(stdscr):
         else:
             if not cleared: stdscr.clear()
             title = "Game Over"[:width - 1]
+            score_sub_title = "Your Score is : "+str(score)[:width - 1]
             start_x_title = int((width // 2) - (len(title) // 2) - len(title) % 2)
+            start_x_score = int((width // 2) - (len(score_sub_title) // 2) - len(score_sub_title) % 2)
             # Turning on attributes for title
             stdscr.attron(curses.color_pair(2))
             stdscr.attron(curses.A_BOLD)
 
             # Rendering title
             stdscr.addstr(height//2, start_x_title, title)
+            stdscr.addstr(height//2+2, start_x_score, score_sub_title)
 
             # Turning off attributes for title
             stdscr.attroff(curses.color_pair(2))
